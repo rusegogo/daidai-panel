@@ -97,14 +97,16 @@ fi
 
 pwd
 whoami
-find / -name "daidai.db"
+ls /app/
 ls -lt /app/Dumb-Panel/
+cat /app/config.yaml
 # --- 8. 调用 ddp 恢复 ------------------------------------------------------
 log "执行 ddp backup restore ${BACKUP_NAME}"
 if ! ddp backup restore "${BACKUP_NAME}"; then
   fail "ddp backup restore ${BACKUP_NAME} 失败"
 fi
-find / -name "daidai.db"
+ls /app/
 ls -lt /app/Dumb-Panel/
+cat /app/config.yaml
 log "B2 恢复完成：${BACKUP_NAME}"
 exit 0
