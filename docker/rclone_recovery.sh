@@ -11,7 +11,7 @@ B2_KEY_ID=$(cat /etc/secrets/B2_KEY_ID)
 B2_APP_KEY=$(cat /etc/secrets/B2_APP_KEY)
 
 # 要同步的桶名与可选路径（例如：bucket-name 或 bucket-name/folder）
-B2_BUCKET_PATH="daidai_panel_backups"
+B2_BUCKET_PATH="daidai-panel-backups"
 
 # 本地目标目录（需确保存在或脚本自动创建）
 LOCAL_DIR="/app/Dumb-Panel/backups"
