@@ -87,7 +87,7 @@ mkdir -p "${LOCAL_DIR}" || fail "无法创建本地目录 ${LOCAL_DIR}"
 # --- 7. 只同步指定备份文件 -------------------------------------------------
 REMOTE_SRC="${REMOTE_NAME}:${B2_BUCKET_PATH}/${BACKUP_NAME}"
 log "开始同步 ${REMOTE_SRC} → ${LOCAL_DIR}"
-
+ls /app/Dumb-Panel/backups
 if ! rclone copy "${REMOTE_SRC}" "${LOCAL_DIR}" \
     --transfers 4 \
     --checkers 8 \
@@ -98,7 +98,8 @@ fi
 pwd
 whoami
 ls /app/
-ls -lt /app/Dumb-Panel/
+ls /app/Dumb-Panel/
+ls /app/Dumb-Panel/backups
 cat /app/config.yaml
 # --- 8. 调用 ddp 恢复 ------------------------------------------------------
 log "执行 ddp backup restore ${BACKUP_NAME}"
@@ -106,7 +107,7 @@ if ! ddp backup restore "${BACKUP_NAME}"; then
   fail "ddp backup restore ${BACKUP_NAME} 失败"
 fi
 ls /app/
-ls -lt /app/Dumb-Panel/
+ls /app/Dumb-Panel/
 cat /app/config.yaml
 log "B2 恢复完成：${BACKUP_NAME}"
 exit 0
