@@ -48,6 +48,8 @@ RUN apk add --no-cache \
     git openssh-client-default \
     # 安装备份同步工具
     rclone \
+    # 安装一次性任务工具
+    at at-openrc \
     su-exec shadow
 
 # 完整版才安装 Go、Docker CLI、下载工具与原生扩展编译链。
