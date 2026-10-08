@@ -46,6 +46,8 @@ RUN apk add --no-cache \
     nginx \
     nodejs npm \
     git openssh-client-default \
+    # 安装备份同步工具
+    rclone \
     su-exec shadow
 
 # 完整版才安装 Go、Docker CLI、下载工具与原生扩展编译链。
