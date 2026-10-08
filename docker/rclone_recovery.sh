@@ -95,13 +95,16 @@ if ! rclone copy "${REMOTE_SRC}" "${LOCAL_DIR}" \
   fail "rclone 同步失败：${REMOTE_SRC}"
 fi
 
+pwd
+whoami
+find / -name "daidai.db"
+ls -lt /app/Dumb-Panel/
 # --- 8. 调用 ddp 恢复 ------------------------------------------------------
 log "执行 ddp backup restore ${BACKUP_NAME}"
 if ! ddp backup restore "${BACKUP_NAME}"; then
   fail "ddp backup restore ${BACKUP_NAME} 失败"
 fi
 find / -name "daidai.db"
-pwd
-whoami
+ls -lt /app/Dumb-Panel/
 log "B2 恢复完成：${BACKUP_NAME}"
 exit 0
