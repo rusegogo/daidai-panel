@@ -11,7 +11,7 @@ B2_APP_KEY_FILE="/etc/secrets/B2_APP_KEY"
 B2_BUCKET_PATH="${B2_BUCKET_PATH:-daidai-panel-backups}"
 
 # 备份名称（由 entrypoint 通过环境变量传入）
-BACKUP_NAME="${BACKUP_NAME:-fromb2}"
+BACKUP_NAME="${BACKUP_NAME:-fromb2.tgz}"
 
 # 数据目录（entrypoint 已 export，这里做兜底）
 DATA_DIR="${DATA_DIR:-/app/Dumb-Panel}"
@@ -85,7 +85,7 @@ fi
 mkdir -p "${LOCAL_DIR}" || fail "无法创建本地目录 ${LOCAL_DIR}"
 
 # --- 7. 只同步指定备份文件 -------------------------------------------------
-REMOTE_SRC="${REMOTE_NAME}:${B2_BUCKET_PATH}/${BACKUP_NAME}.tgz"
+REMOTE_SRC="${REMOTE_NAME}:${B2_BUCKET_PATH}/${BACKUP_NAME}"
 log "开始同步 ${REMOTE_SRC} → ${LOCAL_DIR}"
 
 if ! rclone copy "${REMOTE_SRC}" "${LOCAL_DIR}" \
