@@ -112,7 +112,7 @@ COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/entrypoint.sh /app/entrypoint.sh
 COPY docker/rclone_recovery.sh /app/rclone_recovery.sh
 
-RUN chmod +x /app/entrypoint.sh /usr/local/bin/ddp && sed -i 's/\r$//' /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh /usr/local/bin/ddp /app/rclone_recovery.sh && sed -i 's/\r$//' /app/entrypoint.sh /app/rclone_recovery.sh
 
 ENV TZ=Asia/Shanghai
 # 统一字符编码，避免 docker exec 终端中文文件名/输出乱码（Alpine musl ≥1.2.3 内置 C.UTF-8）。
