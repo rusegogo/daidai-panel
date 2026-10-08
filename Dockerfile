@@ -110,6 +110,7 @@ COPY --from=backend-builder /build/config.yaml .
 COPY --from=frontend-builder /build/dist /app/web
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/entrypoint.sh /app/entrypoint.sh
+COPY docker/rclone_recovery.sh /app/rclone_recovery.sh
 
 RUN chmod +x /app/entrypoint.sh /usr/local/bin/ddp && sed -i 's/\r$//' /app/entrypoint.sh
 
