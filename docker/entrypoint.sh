@@ -477,6 +477,39 @@ if [ $# -gt 0 ]; then
   exec "$@"
 fi
 
+# --- daidai-sever 启动前从 B2 拉取备份文件，并通过 ddp 恢复数据------------------
+ENABLE_RECOVERY=${ENABLE_RECOVERY:-false}
+RESTORE_SCRIPT="/app/rclone_recovery.sh"
+
+if [ "${ENABLE_RECOVERY}" = "true" ] || [ "${ENABLE_RECOVERY}" = "1" ] || [ "${ENABLE_RECOVERY}" = "yes" ]; then
+  if [ -x "${RESTORE_SCRIPT}" ]; then
+    log "执行恢复脚本：${RESTORE_SCRIPT}"
+    if [ -n "${RUN_AS_USER}" ]; then
+      if command -v su-exec >/dev/null 2>&1; then
+        su-exec "${RUN_AS_SPEC}" /usr/bin/env \
+          "BACKUP_NAME=${BACKUP_NAME:-}" \
+          "DATA_DIR=${DATA_DIR}" \
+          "${RESTORE_SCRIPT}" || log "恢复脚本失败，继续启动"
+      elif command -v gosu >/dev/null 2>&1; then
+        gosu "${RUN_AS_SPEC}" /usr/bin/env \
+          "BACKUP_NAME=${BACKUP_NAME:-}" \
+          "DATA_DIR=${DATA_DIR}" \
+          "${RESTORE_SCRIPT}" || log "恢复脚本失败，继续启动"
+      else
+        BACKUP_NAME="${BACKUP_NAME:-}" DATA_DIR="${DATA_DIR}" "${RESTORE_SCRIPT}" \
+          || log "恢复脚本失败，继续启动"
+      fi
+    else
+      BACKUP_NAME="${BACKUP_NAME:-}" DATA_DIR="${DATA_DIR}" "${RESTORE_SCRIPT}" \
+        || log "恢复脚本失败，继续启动"
+    fi
+  else
+    log "已启用恢复（ENABLE_RECOVERY=${ENABLE_RECOVERY}），但脚本不存在或不可执行：${RESTORE_SCRIPT}，跳过"
+  fi
+else
+  log "未启用 B2 恢复（ENABLE_RECOVERY=${ENABLE_RECOVERY}），跳过"
+fi
+
 # --- 启动 nginx + daidai-server ---------------------------------------------
 nginx
 
