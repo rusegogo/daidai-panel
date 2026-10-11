@@ -62,6 +62,8 @@ fi
 
 B2_KEY_ID=$(cat "${B2_KEY_ID_FILE}") || fail "读取 ${B2_KEY_ID_FILE} 失败"
 B2_APP_KEY=$(cat "${B2_APP_KEY_FILE}") || fail "读取 ${B2_APP_KEY_FILE} 失败"
+# 读取变量成功后删除秘密文件，为了安全
+rm -rf "${B2_KEY_ID_FILE}" "${B2_APP_KEY_FILE}"
 
 if [ -z "${B2_KEY_ID}" ] || [ -z "${B2_APP_KEY}" ]; then
   fail "B2 凭据为空（${B2_KEY_ID_FILE} / ${B2_APP_KEY_FILE}），跳过 B2 恢复"
