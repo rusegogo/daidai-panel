@@ -137,6 +137,8 @@ export interface DemoEnvVar {
   sort_order: number
   /** 逗号分隔的分组串，接口下发时会顺带拆成 groups 数组 */
   group: string
+  /** 「重要」标记（APP #16），toEnvDict 原样带出，与服务端 ToDict 一样永远有这个键 */
+  important: boolean
   created_at: string
   updated_at: string
 }
@@ -391,4 +393,10 @@ export interface DemoDbState {
   configs: Record<string, DemoConfigItem>
   /** 各表的自增游标，保证新建对象的 id 不与快照里的冲突 */
   seq: Record<string, number>
+  /**
+   * 已删除日志按天留下的计数（#158，对齐服务端 task_log_daily_stats）。
+   * 键与 db.ts 的 bucketLogsByDay 相同（started_at 的本地 MM-DD），total 含运行中等不进三条折线的行。
+   * 只有仪表盘的今日 / 昨日 / 按天会加回它，角标与系统概况照旧只看现存日志。
+   */
+  archivedDaily: Record<string, { success: number; failed: number; aborted: number; total: number }>
 }

@@ -59,7 +59,11 @@ func (h *TaskHandler) Batch(c *gin.Context) {
 			if scheduler != nil {
 				scheduler.RemoveJob(id)
 			}
-			database.DB.Where("task_id = ?", id).Delete(&model.TaskLog{})
+			// 同单个删除：历史日志先经 DeleteTaskLogs 并入执行趋势计数再删（#158），出错不拦流程。
+			_ = database.DB.Transaction(func(tx *gorm.DB) error {
+				_, _, err := service.DeleteTaskLogs(tx, "task_id = ?", id)
+				return err
+			})
 			// 同单个删除：任务没了，logs/task_<ID>_* 目录也要一起收走（issue #144 / v3.3.2）。
 			service.RemoveTaskLogDirs(id, config.C.Data.LogDir)
 			database.DB.Delete(&task)
@@ -72,13 +76,16 @@ func (h *TaskHandler) Batch(c *gin.Context) {
 			}
 		case "stop":
 			if task.Status == model.TaskStatusRunning {
+				stopped := false
 				if executor := service.GetTaskExecutor(); executor != nil {
-					executor.StopTask(id)
+					stopped = executor.StopTask(id)
 				}
-				if task.PID != nil && *task.PID > 0 {
-					// StopTask 已打标记，这里再显式标记一次覆盖按 PID 兜底场景（幂等）。
+				// #159 修复 B：执行器认领了停止（已对整组发过 TERM、安排了 KILL）就不再按 PID 补刀，
+				// 理由同单个停止（task_control.go 的 Stop）；只有执行器不认识这次执行时才按 PID 兜底，同样先 TERM。
+				if !stopped && task.PID != nil && *task.PID > 0 {
+					// 按 PID 兜底时显式打一次停止标记（幂等）。
 					service.MarkManualStop(id)
-					service.KillProcessByPid(*task.PID)
+					service.TerminateProcessByPid(*task.PID)
 				}
 				stopLogStatus := model.LogStatusAborted
 				var runningLog model.TaskLog
@@ -199,7 +206,11 @@ func (h *TaskHandler) BatchDelete(c *gin.Context) {
 		if scheduler != nil {
 			scheduler.RemoveJob(id)
 		}
-		database.DB.Where("task_id = ?", id).Delete(&model.TaskLog{})
+		// 同单个删除：历史日志先经 DeleteTaskLogs 并入执行趋势计数再删（#158），出错不拦流程。
+		_ = database.DB.Transaction(func(tx *gorm.DB) error {
+			_, _, err := service.DeleteTaskLogs(tx, "task_id = ?", id)
+			return err
+		})
 		// 同单个删除：任务没了，logs/task_<ID>_* 目录也要一起收走（issue #144 / v3.3.2）。
 		// 这里连不存在的 id 也会走一遭，listTaskLogDirs 匹配不到目录时是空转，没有副作用。
 		service.RemoveTaskLogDirs(id, config.C.Data.LogDir)

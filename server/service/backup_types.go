@@ -101,6 +101,7 @@ type BackupEnvVar struct {
 	Position  float64   `json:"position"`
 	SortOrder int       `json:"sort_order"`
 	Group     string    `json:"group"`
+	Important bool      `json:"important,omitempty"` // 「重要」标记（APP #16）；omitempty：普通变量不写这个键，老备份 / 青龙备份没有它，读出来都是 false
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -166,14 +167,15 @@ type BackupConfigBundle struct {
 }
 
 type BackupPayload struct {
-	Configs       BackupConfigBundle   `json:"configs,omitempty"`
-	Tasks         []BackupTask         `json:"tasks,omitempty"`
-	EnvVars       []BackupEnvVar       `json:"env_vars,omitempty"`
-	Subscriptions []BackupSubscription `json:"subscriptions,omitempty"`
-	SSHKeys       []BackupSSHKey       `json:"ssh_keys,omitempty"`
-	Dependencies  []BackupDependency   `json:"dependencies,omitempty"`
-	TaskLogs      []BackupTaskLog      `json:"task_logs,omitempty"`
-	TaskViews     []model.TaskView     `json:"task_views,omitempty"`
+	Configs           BackupConfigBundle       `json:"configs,omitempty"`
+	Tasks             []BackupTask             `json:"tasks,omitempty"`
+	EnvVars           []BackupEnvVar           `json:"env_vars,omitempty"`
+	Subscriptions     []BackupSubscription     `json:"subscriptions,omitempty"`
+	SSHKeys           []BackupSSHKey           `json:"ssh_keys,omitempty"`
+	Dependencies      []BackupDependency       `json:"dependencies,omitempty"`
+	TaskLogs          []BackupTaskLog          `json:"task_logs,omitempty"`
+	TaskViews         []model.TaskView         `json:"task_views,omitempty"`
+	TaskLogDailyStats []model.TaskLogDailyStat `json:"task_log_daily_stats,omitempty"` // 执行趋势里已删日志的按天计数（#158），跟着「日志」勾选项走；老备份没有这个键 = nil
 }
 
 type BackupManifest struct {

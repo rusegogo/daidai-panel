@@ -187,19 +187,22 @@ func main() {
 	// 「已安装」却加载不了，重装按钮也修不好（#150）。同样排在启动校验之后，后台按原版本定点重装，不阻塞启动。
 	service.RepairPythonPackagesForLibcChange()
 	handler.FinalizePendingAutoUpdateOnStartup()
-	stepStarted = time.Now()
+	// 根目录那两份通知辅助脚本（notify.py / sendNotify.js）只读写两个文件，照旧同步准备好，开机任务一跑就能用。
 	if err := service.EnsureBuiltinNotifyHelpers(cfg.Data.ScriptsDir); err != nil {
 		log.Printf("prepare builtin notify helpers failed: %v", err)
 	}
-	if err := service.CleanupManagedHelperCopiesUnderRoot(cfg.Data.ScriptsDir); err != nil {
-		log.Printf("cleanup duplicated notify helpers failed: %v", err)
-	}
-	logSlowStartupStep("整理通知辅助脚本（遍历脚本目录）", stepStarted)
-	// 启动时先隔离脚本目录中的异常污染目录，避免继续影响脚本管理、备份和统计链路。
-	// 它还要遍历整棵脚本目录清理残留的 node_modules 软链，慢盘上也可能要几秒，同样计时。
-	stepStarted = time.Now()
-	service.QuarantineUnexpectedScriptEntriesOnStartup()
-	logSlowStartupStep("隔离脚本目录污染项、清理残留软链（遍历脚本目录）", stepStarted)
+	// 两遍整棵脚本目录的遍历放到后台（#158）：隔离顶层污染目录并清悬空的 node_modules 软链、清子目录里旧版面板留下的通知脚本副本。
+	// 慢盘上每遍几秒，以前挡在监听前面。只挪一遍没用：时间几乎全花在第一次读目录上，另一遍会变成冷缓存上的第一遍，照样几秒。
+	// 两遍放在同一个协程里、软链那遍排前面：悬空的面板软链会挡住那个目录里 Node 任务的 ESM import，越早清越好；
+	// 通知脚本副本每个任务运行前还会清自己的目录（cleanupManagedHelperCopies），这里只是兜底。
+	// 代价：悬空软链不再保证早于开机任务清掉，改为启动后几秒内清掉。
+	// 只删文件 / 软链、搬目录，不碰数据库；关停不等它，进程退出时停在哪一步都不留半成品。
+	go func() {
+		service.QuarantineUnexpectedScriptEntriesOnStartup()
+		if err := service.CleanupManagedHelperCopiesUnderRoot(cfg.Data.ScriptsDir); err != nil {
+			log.Printf("cleanup duplicated notify helpers failed: %v", err)
+		}
+	}()
 	// 每次启动都重建 /ql 兼容层：Magisk 重刷 zip、容器重建都会让它整个消失，
 	// 带「只跑一次」的标记反而会让重建后永远修不回来。全程 best-effort，不会阻塞启动。
 	service.EnsureQingLongCompatLayout()
@@ -301,9 +304,14 @@ func main() {
 }
 
 // 关停时间预算。宽限最短的是 Docker：docker stop / compose down / watchtower 默认只等 10 秒，到点直接 SIGKILL
-// （Windows 关控制台窗口约 5 秒、Magisk 动作按钮 2 秒，正常路径几十毫秒就能走完）。
+// （Windows 关控制台窗口约 5 秒、Magisk 动作按钮 2 秒，正常路径几十毫秒就能走完；Magisk 下关停终止任务是立即 KILL，见下）。
 // 每一步都有上限，再加一个总兜底，保证 8 秒内退出，给 entrypoint 与 Docker 留出余量。
-// 任务结算的等待上限（4 秒）在 service.ShutdownSchedulerV2 里，与 HTTP 关停同时进行。
+// 终止任务时先 SIGTERM、所有进程组共用最多 2 秒的宽限再 SIGKILL（service.HaltSchedulerV2，#159）；
+// Magisk 部署例外：关停时不给 TERM 宽限，所有进程组立即整组 SIGKILL（与 v3.3.5 一致）。动作按钮「停止」是
+// kill -TERM 面板、sleep 2、还在就 kill -KILL（Magisk/action.sh），SignalStop 的 1 秒加 2 秒宽限装不下，面板先被 KILL 的话
+// 忽略 TERM 的任务会成孤儿；action.sh 是模块外壳，在线升级改不到，只能面板这边让步。
+// 任务结算的等待上限（3 秒）在 service.ShutdownSchedulerV2 里，与 HTTP 关停同时进行。
+// 总账：max(1+2+3, 6.5, 5) + 1 = 7.5 秒。
 const (
 	shutdownHardLimit = 8 * time.Second // 总兜底：任何一步卡住（例如唯一的数据库连接被恢复备份的长事务占着）都强制退出
 	shutdownHTTPWait  = 5 * time.Second // HTTP：SSE 已被取消，剩下的只有上传下载、恢复备份这类长请求，等不完就 Close
@@ -316,8 +324,8 @@ const (
 
 // shutdownPanel 是面板唯一的关停流程：收到 SIGTERM / SIGINT，或面板自己请求退出（重启 / 停止 / 在线升级）都走这里。
 // 顺序（时间预算见上面的常量）：
-//  1. 停调度、杀任务（HaltSchedulerV2）与 2. HTTP 关停同时开始，互不依赖：第 1 步卡住时 SSE 照样断开；
-//  3. 等任务结算（ShutdownSchedulerV2，≤4 秒），没结算完的标成中断；
+//  1. 停调度、终止任务（HaltSchedulerV2，先 TERM、共用 ≤2 秒宽限再 KILL）与 2. HTTP 关停同时开始，互不依赖：第 1 步卡住时 SSE 照样断开；
+//  3. 等任务结算（ShutdownSchedulerV2，≤3 秒），没结算完的标成中断；
 //  4. 自动更新 / 日志清理 / 资源监控关通道，备份、订阅两个调度等到共用的截止时间；
 //  5. 等 HTTP 关停结束；
 //  6. 最后关库：之后任何读写都会报 database is closed，所以必须排在所有收尾之后。
