@@ -568,7 +568,7 @@ while true; do
   EXIT_CODE=$?
   set -e
   rm -f "${SERVER_PID_FILE}"
-  [ ${EXIT_CODE} -eq 0 ] && exit 0
+  [ ${EXIT_CODE} -eq 0 ] && sleep 180 && exit 0
   log "daidai-server 异常退出 (code=${EXIT_CODE})，2 秒后重启"
   sleep 2
 done
