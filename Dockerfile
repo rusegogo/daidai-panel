@@ -108,7 +108,7 @@ COPY --from=backend-builder /build/daidai-server .
 COPY --from=backend-builder /build/ddp /usr/local/bin/ddp
 COPY --from=backend-builder /build/config.yaml .
 COPY --from=frontend-builder /build/dist /app/web
-COPY docker/close.html /app/web/close.conf
+COPY docker/close.html /app/web/close.html
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/close.conf /etc/nginx/http.d/close.conf1
 COPY docker/entrypoint.sh /app/entrypoint.sh
