@@ -91,7 +91,7 @@ log "开始同步 ${REMOTE_SRC} → ${LOCAL_DIR}"
 if rclone sync "${REMOTE_SRC}" "${LOCAL_DIR}" \
     --exclude "deps/**" \
     --exclude "run/**" \
-    --exclude "logs" \
+    --exclude "logs/**" \
     --transfers 4 \
     --checkers 8 \
     --retries 3; then
