@@ -511,7 +511,7 @@ else
 fi
 
 # --- 通过alpin linux cron 定时运行备份daidai-server数据检查------------------
-ENABLE_BACKUP=${ENABLE_BACKUP:-${ENABLE_RECOVERY}:-false}
+ENABLE_BACKUP=${ENABLE_BACKUP:-${ENABLE_RECOVERY:-false}}
 BACKUP_SCRIPT="/app/ready-for-render-halt.sh"
 
 if [ "${ENABLE_BACKUP}" = "true" ] || [ "${ENABLE_BACKUP}" = "1" ] || [ "${ENABLE_BACKUP}" = "yes" ]; then
