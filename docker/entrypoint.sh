@@ -510,6 +510,39 @@ else
   log "未启用 B2 恢复（ENABLE_RECOVERY=${ENABLE_RECOVERY}），跳过"
 fi
 
+# --- 通过alpin linux cron 定时运行备份daidai-server数据检查------------------
+ENABLE_BACKUP=${ENABLE_BACKUP:-${ENABLE_RECOVERY}:-false}
+BACKUP_SCRIPT="/app/ready-for-render-halt.sh"
+
+if [ "${ENABLE_BACKUP}" = "true" ] || [ "${ENABLE_BACKUP}" = "1" ] || [ "${ENABLE_BACKUP}" = "yes" ]; then
+  if [ -x "${BACKUP_SCRIPT}" ]; then
+    log "执行备份脚本：${BACKUP_SCRIPT}"
+    if [ -n "${RUN_AS_USER}" ]; then
+      if command -v su-exec >/dev/null 2>&1; then
+        su-exec "${RUN_AS_SPEC}" /usr/bin/env \
+          "BACKUP_NAME=${BACKUP_NAME:-}" \
+          "DATA_DIR=${DATA_DIR}" \
+          "${BACKUP_SCRIPT}" || log "备份脚本失败，继续启动"
+      elif command -v gosu >/dev/null 2>&1; then
+        gosu "${RUN_AS_SPEC}" /usr/bin/env \
+          "BACKUP_NAME=${BACKUP_NAME:-}" \
+          "DATA_DIR=${DATA_DIR}" \
+          "${BACKUP_SCRIPT}" || log "备份脚本失败，继续启动"
+      else
+        BACKUP_NAME="${BACKUP_NAME:-}" DATA_DIR="${DATA_DIR}" "${BACKUP_SCRIPT}" \
+          || log "备份脚本失败，继续启动"
+      fi
+    else
+      BACKUP_NAME="${BACKUP_NAME:-}" DATA_DIR="${DATA_DIR}" "${BACKUP_SCRIPT}" \
+        || log "备份脚本失败，继续启动"
+    fi
+  else
+    log "已启用备份（ENABLE_BACKUP=${ENABLE_BACKUP}），但脚本不存在或不可执行：${BACKUP_SCRIPT}，跳过"
+  fi
+else
+  log "未启用备份（ENABLE_BACKUP=${ENABLE_BACKUP}），跳过"
+fi
+
 # --- 启动 nginx + daidai-server ---------------------------------------------
 nginx
 
